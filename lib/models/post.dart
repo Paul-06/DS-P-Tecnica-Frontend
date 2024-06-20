@@ -12,7 +12,7 @@ class Post {
   factory Post.fromJson(Map<String, dynamic> json) {
     return Post(
       contenido: json['contenido'],
-      username: json['username'],
+      username: json['username'] ?? "Tú",
       fechaPublicacion: DateTime.parse(json['fechaPublicacion']),
     );
   }
