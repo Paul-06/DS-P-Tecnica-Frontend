@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/api_service.dart';  // Asegúrate de que esta importación sea correcta.
+import '../services/api_service.dart'; // Asegúrate de que esta importación sea correcta.
 import '../models/post.dart'; // Asegúrate de que esta importación sea correcta.
 import '../models/usuario.dart'; // Asegúrate de que esta importación sea correcta.
 
@@ -27,9 +27,24 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final ApiService apiService = ApiService();
   int _currentIndex = 0;
+  List<int> userIds = [1, 2, 3];
+  List<String> usernames = ['Alfonso', 'Ivan', 'Alicia'];
 
-  final List<int> userIds = [1, 2, 3];
-  final List<String> usernames = ['Alfonso', 'Ivan', 'Alicia'];
+  // Estado para controlar si se está siguiendo al usuario
+  Map<int, Set<int>> followingMap = {
+    1: {}, // Alfonso
+    2: {}, // Ivan
+    3: {}, // Alicia
+  };
+
+  // Controlador para el TextField
+  TextEditingController _postController = TextEditingController();
+
+  @override
+  void dispose() {
+    _postController.dispose(); // Liberar el controlador cuando el widget se destruye
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,7 +95,7 @@ class _HomePageState extends State<HomePage> {
                           if (snapshot.connectionState == ConnectionState.waiting) {
                             return Center(child: CircularProgressIndicator());
                           } else if (snapshot.hasError) {
-                            return Center(child: Text('Error: ${snapshot.error}'));
+                            return Center(child: Text('${snapshot.error}'));
                           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
                             return Center(child: Text('Sin posts encontrados'));
                           } else {
@@ -120,7 +135,7 @@ class _HomePageState extends State<HomePage> {
                           if (snapshot.connectionState == ConnectionState.waiting) {
                             return Center(child: CircularProgressIndicator());
                           } else if (snapshot.hasError) {
-                            return Center(child: Text('Error: ${snapshot.error}'));
+                            return Center(child: Text('${snapshot.error}'));
                           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
                             return Center(child: Text('Sin posts encontrados'));
                           } else {
@@ -128,7 +143,7 @@ class _HomePageState extends State<HomePage> {
                               children: snapshot.data!
                                   .map((post) => ListTile(
                                         title: Text(post.contenido),
-                                        subtitle: Text('${post.username} lo posteaste el ${post.fechaPublicacion}'),
+                                        subtitle: Text('${post.username} - ${post.fechaPublicacion}'),
                                       ))
                                   .toList(),
                             );
@@ -143,12 +158,12 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         FutureBuilder<List<Usuario>>(
-          future: apiService.getNoSeguidos(userId),
+          future: apiService.getDemasUsuarios(username),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return Center(child: CircularProgressIndicator());
             } else if (snapshot.hasError) {
-              return Center(child: Text('Error: ${snapshot.error}'));
+              return Center(child: Text('${snapshot.error}'));
             } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
               return Center(child: Text('Sin usuarios encontrados'));
             } else {
@@ -157,8 +172,26 @@ class _HomePageState extends State<HomePage> {
                     .map((usuario) => ListTile(
                           title: Text(usuario.username),
                           trailing: IconButton(
-                            icon: Icon(Icons.person_add),
-                            onPressed: () => apiService.seguirUsuario(userId, usuario.id),
+                            icon: followingMap[userId]!.contains(usuario.id)
+                                ? Icon(Icons.person) // Cambia el icono si ya se sigue al usuario
+                                : Icon(Icons.person_add),
+                            onPressed: () {
+                              // Verifica si ya se sigue al usuario
+                              if (!followingMap[userId]!.contains(usuario.id)) {
+                                // Si no se sigue, seguir al usuario y mostrar notificación
+                                apiService.seguirUsuario(userId, usuario.id);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('$username empezó a seguir a ${usuario.username}'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                                // Agrega al usuario seguido al estado
+                                setState(() {
+                                  followingMap[userId]!.add(usuario.id);
+                                });
+                              }
+                            },
                           ),
                         ))
                     .toList(),
@@ -169,10 +202,12 @@ class _HomePageState extends State<HomePage> {
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: TextField(
+            controller: _postController, // Asignar el controlador al TextField
             onSubmitted: (value) {
               if (value.isNotEmpty) {
                 apiService.agregarPost(userId, value).then((_) {
                   setState(() {});
+                  _postController.clear(); // Limpiar el contenido del TextField después de crear el post
                 }).catchError((error) {
                   ScaffoldMessenger.of(context)
                       .showSnackBar(SnackBar(content: Text('Error al crear post')));

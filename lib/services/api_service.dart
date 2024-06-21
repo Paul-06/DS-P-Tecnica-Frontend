@@ -9,36 +9,44 @@ class ApiService {
 
   Future<List<Post>> getPostsSeguidos(String username) async {
     debugPrint('Fetching posts for username: $username');
-    final response = await http.get(Uri.parse('$baseUrl/post/$username/posts/seguidos'));
+    final response =
+        await http.get(Uri.parse('$baseUrl/post/$username/posts/seguidos'));
 
     if (response.statusCode == 200) {
       List<dynamic> data = jsonDecode(response.body);
       return data.map((post) => Post.fromJson(post)).toList();
+    } else if (response.statusCode == 404) {
+      throw Exception('Sin posts de seguidos');
     } else {
-      throw Exception('Failed to load posts');
+      throw Exception('Error al cargar posts de seguidos');
     }
   }
 
   Future<List<Post>> getPostsDeUsuario(int usuarioId) async {
-    final response = await http.get(Uri.parse('$baseUrl/post/$usuarioId/posts'));
+    final response =
+        await http.get(Uri.parse('$baseUrl/post/$usuarioId/posts'));
 
     if (response.statusCode == 200) {
       List<dynamic> data = jsonDecode(response.body);
       return data.map((post) => Post.fromJson(post)).toList();
+    } else if (response.statusCode == 404) {
+      throw Exception('Sin posts del usuario');
     } else {
-      throw Exception('Failed to load posts');
+      throw Exception('Error al cargar los posts del usuario');
     }
   }
 
-  Future<List<Usuario>> getNoSeguidos(int id) async {
+  Future<List<Usuario>> getDemasUsuarios(String username) async {
     final response =
-        await http.get(Uri.parse('$baseUrl/usuario/$id/noseguidos'));
+        await http.get(Uri.parse('$baseUrl/usuario/$username/usuarios'));
 
     if (response.statusCode == 200) {
       List<dynamic> data = jsonDecode(response.body);
       return data.map((usuario) => Usuario.fromJson(usuario)).toList();
+    } else if (response.statusCode == 400) {
+      throw Exception('Sin usuarios');
     } else {
-      throw Exception('Failed to load no seguidos');
+      throw Exception('Error al cargar usuarios');
     }
   }
 
@@ -47,7 +55,7 @@ class ApiService {
         .post(Uri.parse('$baseUrl/usuario/$idSeguidor/seguir/$idSeguido'));
 
     if (response.statusCode != 200) {
-      throw Exception('Failed to follow user');
+      throw Exception('Error al seguir usuario');
     }
   }
 
@@ -59,7 +67,7 @@ class ApiService {
     );
 
     if (response.statusCode != 200) {
-      throw Exception('Failed to add post');
+      throw Exception('Error al crear post');
     }
   }
 }
